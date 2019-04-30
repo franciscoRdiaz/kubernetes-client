@@ -25,15 +25,11 @@ import java.io.PipedOutputStream;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-
-import io.fabric8.kubernetes.client.dsl.CopyOrReadable;
-import io.fabric8.kubernetes.client.utils.Utils;
 
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -43,19 +39,20 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.LocalPortForward;
 import io.fabric8.kubernetes.client.PortForward;
-import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.BytesLimitTerminateTimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.ContainerResource;
+import io.fabric8.kubernetes.client.dsl.CopyOrReadable;
 import io.fabric8.kubernetes.client.dsl.ExecListenable;
 import io.fabric8.kubernetes.client.dsl.ExecListener;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
 import io.fabric8.kubernetes.client.dsl.Execable;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.Loggable;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TtyExecErrorChannelable;
-import io.fabric8.kubernetes.client.dsl.BytesLimitTerminateTimeTailPrettyLoggable;
 import io.fabric8.kubernetes.client.dsl.TtyExecErrorable;
 import io.fabric8.kubernetes.client.dsl.TtyExecOutputErrorable;
 import io.fabric8.kubernetes.client.dsl.TtyExecable;
@@ -63,6 +60,7 @@ import io.fabric8.kubernetes.client.dsl.base.HasMetadataOperation;
 import io.fabric8.kubernetes.client.dsl.base.OperationContext;
 import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
 import io.fabric8.kubernetes.client.utils.URLUtils;
+import io.fabric8.kubernetes.client.utils.Utils;
 import okhttp3.*;
 
 public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, DoneablePod, PodResource<Pod, DoneablePod>> implements PodResource<Pod, DoneablePod>,CopyOrReadable<Boolean,InputStream> {
@@ -316,7 +314,7 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, Doneab
         copyFile(getContext().getFile(), destination.toFile());
         return true;
       } else if (Utils.isNotNullOrEmpty(getContext().getDir())) {
-        copyDir(getContext().getFile(), destination.toFile());
+        copyDir(getContext().getDir(), destination.toFile());
         return true;
       }
       throw new IllegalStateException("No file or dir has been specified");
@@ -331,7 +329,7 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, Doneab
       if (Utils.isNotNullOrEmpty(getContext().getFile())) {
         return readFile(getContext().getFile());
       } else if (Utils.isNotNullOrEmpty(getContext().getDir())) {
-        return readTar(getContext().getFile());
+        return readTar(getContext().getDir());
       }
       throw new IllegalStateException("No file or dir has been specified");
     } catch (Exception e) {
@@ -483,7 +481,6 @@ public class PodOperationsImpl extends HasMetadataOperation<Pod, PodList, Doneab
         }
         try (
           InputStream is = readTar(source);
-          OutputStream os = new FileOutputStream(destination);
           org.apache.commons.compress.archivers.tar.TarArchiveInputStream tis = new org.apache.commons.compress.archivers.tar.TarArchiveInputStream(is))
 
         {
